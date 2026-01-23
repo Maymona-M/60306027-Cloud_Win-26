@@ -1,0 +1,10 @@
+# Data folder - contains Titanic dataset files
+./data/
+# Output
+outputs/
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
