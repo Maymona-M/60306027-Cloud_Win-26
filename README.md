@@ -124,6 +124,8 @@ Example response:
   "survival_status": "Survived"
 }
 
+---
+
 ## Conclusion
 This lab demonstrates a full ML lifecycle:
   - Training
