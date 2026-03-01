@@ -60,6 +60,8 @@ Build an end-to-end text feature engineering pipeline on Azure ML:
 │   ├── entity_amazon_review.yml
 │   ├── FeatureSetSpec.yaml
 │   └── feature_set_amazon_review_text_features.yml
+├── notebooks/
+│   └── 01_explore_validate_sample.ipynb
 ├── pipelines/
 │   └── feature_pipeline.yml
 └── README.md
@@ -168,12 +170,51 @@ az ml feature-store-entity create --file feature_store/entity_amazon_review.yml 
 
 ### Step 6: Azure ML Command Components
 1. split_dataset
+- Splits the dataset into train (70%), validation (15%), and test (15%) using two sequential train_test_split calls. The split must run before any feature fitting to prevent data leakage.
+- If TF-IDF is fitted on the full dataset before splitting, the vocabulary will contain information from validation and test reviews. This means the model indirectly sees test data during training, inflating performance metrics artificially.
+
 2. normalize_text
+- Cleans raw review text through a pipeline of regex transformations:
+  - Lowercase: "Great" and "great" are the same word — without this TF-IDF treats them as separate tokens, inflating vocabulary size
+  - Remove URLs: URLs like http://amazon.com carry no sentiment or topic signal
+  - Replace numbers: Standalone numbers add noise without semantic meaning
+  - Remove punctuation: Punctuation is not a meaningful token for TF-IDF or SBERT
+  - Collapse whitespace: Previous steps leave multiple spaces; this normalizes them
+  - Filter short reviews: Reviews under 10 characters after cleaning carry no useful signal
+
 3. length_features
+- Extracts two basic statistical features:
+  - review_length_words: number of whitespace-separated tokens
+  - review_length_words: number of whitespace-separated tokens
+
+- Review length correlates with reviewer engagement and quality. Very short reviews are often uninformative. Very long reviews tend to contain detailed technical assessments. These are lightweight features that add signal with near-zero compute cost.
+
 4. sentiment_features
+- Uses NLTK VADER (Valence Aware Dictionary and sEntiment Reasoner) to extract four scores:
+  - sentiment_pos: proportion of positive sentiment words (0–1)
+  - sentiment_neg: proportion of negative sentiment words (0–1)
+  - sentiment_neu: proportion of neutral words (0–1)
+  - sentiment_compound: normalized overall polarity score (−1 to +1)
+- VADER is designed specifically for informal text and product reviews. It handles slang, capitalization emphasis, punctuation emphasis, and negations (e.g., "not good") without requiring model training. 
+
 5. tfidf_features
+- Uses sklearn.feature_extraction.text.TfidfVectorizer with the following settings:
+  - max_features=5000: limits vocabulary to the top 5000 most informative terms, keeping the feature matrix manageable
+  - stop_words='english':removes common filler words (the, a, is) that appear everywhere and carry no discriminative signal
+  - ngram_range=(1,2): captures both unigrams and bigrams, allowing phrases like "not good" or "battery life" to be represented as single features
+  - sublinear_tf=True: applies log normalization to term frequency, reducing the dominance of very frequent terms
+- Data leakage prevention: The vectorizer is fitted exclusively on the training split. The frozen vocabulary and IDF weights are then applied to validation and test splits using .transform() only — never .fit_transform(). The fitted vectorizer is saved as a .joblib file for auditability.
+
 6. sbert_embeddings
+-Uses all-MiniLM-L6-v2 from sentence-transformers to encode each review as a 384-dimensional dense vector (bert_emb_0 through bert_emb_383).
+- TF-IDF treats each word independently and cannot capture semantic similarity. SBERT understands that "excellent battery life" and "great power duration" express the same concept. 
+- Processing is done in chunks of 10,000 rows with gc.collect() between chunks to avoid out-of-memory errors on CPU compute nodes. 
+
 7. merge_features
+- Performs inner joins of all feature tables on composite key (asin, reviewerID).
+- Each table is deduplicated before joining to prevent row count explosion from many-to-many joins. 
+- Join order follows smallest-to-largest table to minimize peak memory usage.
+- Pipeline execution time is logged at the end of this step as part of the optimization challenge.
 
 
 ### Step 7: Pipeline Definition and Submission
