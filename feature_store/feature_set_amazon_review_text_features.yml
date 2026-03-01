@@ -1,0 +1,10 @@
+$schema: https://azuremlschemas.azureedge.net/latest/featurestore.featureset.schema.json
+name: amazon_review_text_features
+version: "1"
+description: Text features for Amazon Electronics reviews including length, sentiment, TF-IDF, and SBERT embeddings
+entities:
+  - azureml:AmazonReview:1
+specification:
+  path: ./
+materialization_settings:
+  offline_enabled: true

@@ -1,0 +1,24 @@
+spec_version: "1"
+source:
+  type: parquet
+  path: azureml://subscriptions/0b475409-9d7c-4dff-a07b-084eff651874/resourcegroups/rg-60306027/workspaces/Amazon-Electronics-Lab-60306027/datastores/workspaceblobstore/paths/azureml/a6e4d293-5fd3-4c5f-a0d5-38bdc6af6620/out/
+  timestamp_column:
+    name: unixReviewTime
+index_columns:
+  - name: asin
+    type: string
+  - name: reviewerID
+    type: string
+features:
+  - name: review_length_words
+    type: integer
+  - name: review_length_chars
+    type: integer
+  - name: sentiment_pos
+    type: float
+  - name: sentiment_neg
+    type: float
+  - name: sentiment_neu
+    type: float
+  - name: sentiment_compound
+    type: float
