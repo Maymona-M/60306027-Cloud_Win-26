@@ -3,139 +3,252 @@
 
 ---
 
-# Lab 1 — DSAI3202: End-to-End Machine Learning on Azure  
+# Lab 5 — DSAI3202: Scalable Feature Extraction and Selection for Predictive Maintenance
 
 ---
 
 ## Objective
-Build a complete end-to-end machine learning pipeline:
-- Version control with Git
-- Train a machine learning model
-- Save and version the trained model
-- Deploy the model as an API on Azure
-- Test the deployed service
+Build a complete end-to-end predictive maintenance pipeline using the NASA C-MAPSS turbofan engine dataset. Raw multivariate sensor time-series data is transformed into meaningful features using tsfresh, then reduced from 777 to 8 features using filter-based methods and a Genetic Algorithm (DEAP). The final selected features are used to train regression models that predict the Remaining Useful Life (RUL) of each engine.
 
 ---
 
 ## Tools & Technologies
-- Git & GitHub  
-- Python (scikit-learn)  
-- Kaggle API  
-- Azure Virtual Machines (Ubuntu)  
-- Conda  
-- FastAPI / Flask  
-- Uvicorn  
+- Git & GitHub
+- Python (pandas, scikit-learn, tsfresh, deap, xgboost, lightgbm)
+- NASA C-MAPSS Turbofan Dataset (FD001)
+- Azure Machine Learning (Components, Pipelines, Compute)
+- Azure ML CLI 
 
 ---
 
 ## Project Structure
 ```bash
 60306027-Cloud_Win-26/
+├── components/
+│   ├── ingest/
+│   │   ├── ingest.py
+│   │   ├── component.yml
+│   │   └── conda.yml
+│   ├── preprocess/
+│   │   ├── preprocess.py
+│   │   ├── component.yml
+│   │   └── conda.yml
+│   ├── feature_extraction/
+│   │   ├── feature_extraction.py
+│   │   ├── component.yml
+│   │   └── conda.yml
+│   ├── feature_selection/
+│   │   ├── feature_selection.py
+│   │   ├── component.yml
+│   │   └── conda.yml
+│   └── train_evaluate/
+│       ├── train_evaluate.py
+│       ├── component.yml
+│       └── conda.yml
 ├── data/
+│   ├── raw/               
+│   └── processed/         
+├── notebooks/
+│   ├── 01_explore_and_preprocess.ipynb
+│   ├── 02_feature_extraction.ipynb
+│   ├── 03_feature_selection.ipynb
+│   └── 04_model_and_evaluation.ipynb
+├── pipelines/
+│   └── pipeline.yml
 ├── models/
-├── outputs/
-├── src/
-│   ├── preprocessing.py
-│   ├── train.py
-│   └── test.py
-├── main.py
-├── environment.yml
+│   └── best_model.pkl
 ├── requirements.txt
 └── README.md
 ```
 
 ---
 
-### Step 1: Create & Clone GitHub Repository
+### Step 1: Create Lab5 Branch
 ```bash
-git clone git@github.com:Maymona-M/60306027-Cloud_Win-26
-cd 60306027-Cloud_Win-26
+git checkout -b Lab5
+git push -u origin Lab5
 ```
 
-### Step 2: Configure Git
+### Step 2: Download Dataset
+
+Download FD001 from NASA C-MAPSS:
+```
+https://www.nasa.gov/intelligent-systems-division/discovery-and-systems-health/pcoe/pcoe-data-set-repository/
+```
+Place files in `data/raw/`:
 ```bash
-git config --global user.name "Your Name"
-git config --global user.email "your_email@example.com"
-git config --list
+mkdir -p data/raw
+cp ~/Downloads/CMAPSSData/*.txt data/raw/
 ```
 
-### Step 3: Create Azure Virtual Machine
-  - OS: Ubuntu 22.04
-  - Size: Standard_DS4_v3
-  - Authentication: SSH
-
-  Connect to VM:
-  ```bash
-  ssh MoonaVM@<VM_PUBLIC_IP>
-  ```
-
-#### Step 4: Install Miniconda on VM
+### Step 3: Upload Data to Azure ML
 ```bash
-wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
-bash miniconda.sh -b -p $HOME/miniconda3
-$HOME/miniconda3/bin/conda init bash
-source ~/.bashrc
-conda --version
+az ml data create --name turbofan_fd001 --version 1 --path data/raw/ --type uri_folder --description "NASA Turbofan FD001 raw sensor data"
 ```
 
-### Step 5: Clone Repository on VM
+### Step 4: Create Compute Cluster
 ```bash
-git clone git@github.com:<username>/60306027-Cloud_Win-26.git
-cd 60306027-Cloud_Win-26
+az ml compute create --name cpu-cluster --type amlcompute --min-instances 0 --max-instances 2 --size Standard_DS3_v2
 ```
 
-### Step 6: Configure Kaggle API
+### Step 5: Run Azure ML Pipeline
 ```bash
-mkdir ~/.kaggle
-nano ~/.kaggle/kaggle.json
-chmod 600 ~/.kaggle/kaggle.json
+az ml job create --file pipelines/pipeline.yml --stream
 ```
 
-### Step 7: Download Titanic Dataset
-```bash
-kaggle competitions download -c titanic
-unzip titanic.zip -d data/
-ls data/
+Monitor in Azure ML Studio:
+```
+https://ml.azure.com → Jobs → turbofan_rul_pipeline
 ```
 
-### Step 8: Train the Model
+### Step 6: Explore Results in Notebooks
+
+Run notebooks in order:
 ```bash
-python main.py --mode train
+notebooks/01_explore_and_preprocess.ipynb
+notebooks/02_feature_extraction.ipynb
+notebooks/03_feature_selection.ipynb
+notebooks/04_model_and_evaluation.ipynb
 ```
 
-### Step 9: Commit & Tag Model Version
+### Step 7: Commit & Push
 ```bash
 git add .
-git commit -m "Train Titanic model and save pipeline"
-git tag v1.0
-git push origin main --tags
+git commit -m "Lab 5: complete Azure ML pipeline for turbofan RUL prediction"
+git push origin Lab5
 ```
 
-### Step 10: Deploy Model as API
-```bash
-uvicorn main:app --reload
+---
+
+## Pipeline Overview
+```
+train_FD001.txt
+      ↓
+  [ingest] — load raw txt, assign column names
+      ↓
+  [preprocess] — compute RUL, drop flat sensors, normalize
+      ↓
+  [feature_extraction] — tsfresh EfficientFCParameters (777 features)
+      ↓
+  [feature_selection] — filters + Genetic Algorithm (8 features)
+      ↓
+  [train_evaluate] — train 4 models, compare RMSE, save best
 ```
 
-### Step 11: Test API
-Open in browser:
-```bash
-http://127.0.0.1:8000/docs
-```
+---
 
-Example response:
-{
-  "prediction": 1,
-  "survival_status": "Survived"
-}
+## Notebook Summaries
+
+| Notebook | Purpose | Key Output |
+|----------|---------|------------|
+| 01_explore_and_preprocess | Load data, compute RUL, drop flat sensors, normalize | train_FD001_preprocessed.csv |
+| 02_feature_extraction | Melt to long format, run tsfresh | features_with_rul.csv (777 features) |
+| 03_feature_selection | Variance → Correlation → MI → GA | features_final.csv (8 features) |
+| 04_model_and_evaluation | Train 4 models, compare RMSE, save best | best_model.pkl, plots |
+
+### Notebook 01 — Exploration & Preprocessing
+- Loaded FD001 training data (20,631 rows, 100 engines)
+- Verified no missing values
+- Computed RUL as max_cycle − current_cycle (range: 0–361)
+- Identified and dropped 7 flat/zero-variance sensors
+  (sensor_1, sensor_5, sensor_6, sensor_10, sensor_16, sensor_18, sensor_19)
+- Normalized 14 remaining sensors to [0,1] with MinMaxScaler
+
+### Notebook 02 — Feature Extraction with tsfresh
+- Reshaped data to long format (288,834 rows) for tsfresh input
+- Extracted 777 statistical features per engine using EfficientFCParameters
+- Grouped features back to per-engine format (100 rows × 777 features)
+- Attached RUL labels (range: 127–361)
+- Runtime: 202.4 seconds
+
+### Notebook 03 — Feature Selection
+**Stage 1 — Filter Methods:**
+- Variance threshold (0.01): 777 → 442 features
+- Correlation filter (0.95): 442 → 414 features
+- Mutual information (top 50): 414 → 50 features
+
+**Stage 2 — Genetic Algorithm (DEAP):**
+- Chromosome: binary vector of length 50
+- Population: 30 | Generations: 20
+- Fitness: RMSE + 0.5 × feature_count
+- Runtime: 94.2 seconds
+- Result: **8 features selected**
+
+### Notebook 04 — Model Training and Evaluation
+- Cleaned feature names for LightGBM compatibility
+- Trained 4 models using 5-fold cross validation
+- Best model: Gradient Boosting (RMSE = 6.35 cycles)
+- Saved model to models/best_model.pkl
+- Generated model comparison and predicted vs actual plots
+
+---
+
+## Azure ML Pipeline
+
+![Pipeline Graph](assets/pipeline_graph.png)
+
+> Job: `red_pipe_tlc4hyd3ck` | Runtime: ~16 min | Compute: cpu-cluster (Standard_DS4_v2)
+
+
+---
+
+## Feature Selection Summary
+
+| Stage | Features Remaining |
+|-------|--------------------|
+| Raw tsfresh features | 777 |
+| After variance filter (0.01) | 442 |
+| After correlation filter (0.95) | 414 |
+| After mutual information (top 50) | 50 |
+| After Genetic Algorithm | **8** |
+
+---
+
+## Results
+
+| Model | CV RMSE | Std |
+|-------|---------|-----|
+| Random Forest | 6.78 | ±2.14 |
+| Gradient Boosting | **6.35** | ±2.73 |
+| XGBoost | 6.53 | ±0.37 |
+| LightGBM | 19.59 | ±3.13 |
+
+**Best model:** Gradient Boosting — RMSE **6.35 cycles**
+
+---
+
+## Runtime Summary
+
+| Stage | Time |
+|-------|------|
+| Feature extraction (tsfresh) | 202.4s |
+| Genetic Algorithm (DEAP) | 94.2s |
+| Full Azure ML pipeline | ~16 min |
+
+---
+
+## Key Design Decisions
+
+- **EfficientFCParameters over Comprehensive** — reduces extraction time 
+  significantly while retaining meaningful statistical features
+- **Drop flat sensors before tsfresh** — 7 zero-variance sensors removed 
+  upfront to avoid wasting compute on uninformative signals
+- **Filter-before-GA strategy** — reduces GA search space from 777 to 50 
+  features first, making the Genetic Algorithm ~10x faster
+- **GA fitness penalty** — fitness = RMSE + 0.5 × feature_count forces 
+  the algorithm toward the smallest subset that still predicts well
 
 ---
 
 ## Conclusion
-This lab demonstrates a full ML lifecycle:
-  - Training
-  - Versioning
-  - Deployment
+
+This lab demonstrates a full feature engineering lifecycle for predictive maintenance:
+
+- Time-series exploration and sensor validation
+- Scalable feature extraction with tsfresh on Azure ML compute
+- Multi-stage feature selection: filter methods + Genetic Algorithm
+- RUL regression with 4 models, best achieving RMSE of 6.35 cycles
+- End-to-end reproducible pipeline versioned on GitHub
 
 ---
 
-- Automated pipeline execution
