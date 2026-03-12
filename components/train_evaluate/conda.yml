@@ -1,0 +1,14 @@
+name: train_evaluate_env
+channels:
+  - defaults
+dependencies:
+  - python=3.9
+  - pip
+  - pip:
+    - pandas
+    - numpy
+    - scikit-learn
+    - xgboost
+    - lightgbm
+    - joblib
+    - matplotlib

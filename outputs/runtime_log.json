@@ -1,0 +1,11 @@
+{
+  "feature_extraction_seconds": 202.4,
+  "n_engines": 100,
+  "n_sensors": 14,
+  "n_features_raw": 777,
+  "n_features_per_engine": 777,
+  "ga_seconds": 94.2,
+  "n_features_after_filter": 50,
+  "n_features_after_ga": 8,
+  "total_selection_seconds": 94.2
+}

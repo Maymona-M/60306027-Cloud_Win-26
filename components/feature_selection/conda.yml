@@ -1,0 +1,13 @@
+name: feature_selection_env
+channels:
+  - defaults
+dependencies:
+  - python=3.9
+  - pip
+  - pip:
+    - pandas
+    - numpy
+    - scikit-learn
+    - tsfresh
+    - deap
+    - joblib

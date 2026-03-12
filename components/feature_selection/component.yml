@@ -1,0 +1,24 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+name: feature_selection_turbofan
+version: 1
+display_name: Feature Selection Turbofan
+type: command
+
+inputs:
+  input_data:
+    type: uri_folder
+
+outputs:
+  output_data:
+    type: uri_folder
+
+code: .
+
+command: >-
+  python feature_selection.py
+  --input_data ${{inputs.input_data}}
+  --output_data ${{outputs.output_data}}
+
+environment:
+  conda_file: conda.yml
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04

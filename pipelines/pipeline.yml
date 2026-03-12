@@ -1,0 +1,58 @@
+$schema: https://azuremlschemas.azureedge.net/latest/pipelineJob.schema.json
+type: pipeline
+display_name: turbofan_rul_pipeline
+description: Full RUL prediction pipeline for NASA Turbofan FD001
+
+settings:
+  default_compute: azureml:cpu-cluster
+
+inputs:
+  raw_data:
+    type: uri_folder
+    path: azureml:turbofan_fd001@latest
+
+jobs:
+  ingest:
+    type: command
+    component: ../components/ingest/component.yml
+    inputs:
+      raw_data: ${{parent.inputs.raw_data}}
+    outputs:
+      output_data:
+        mode: rw_mount
+
+  preprocess:
+    type: command
+    component: ../components/preprocess/component.yml
+    inputs:
+      input_data: ${{parent.jobs.ingest.outputs.output_data}}
+    outputs:
+      output_data:
+        mode: rw_mount
+
+  feature_extraction:
+    type: command
+    component: ../components/feature_extraction/component.yml
+    inputs:
+      input_data: ${{parent.jobs.preprocess.outputs.output_data}}
+    outputs:
+      output_data:
+        mode: rw_mount
+
+  feature_selection:
+    type: command
+    component: ../components/feature_selection/component.yml
+    inputs:
+      input_data: ${{parent.jobs.feature_extraction.outputs.output_data}}
+    outputs:
+      output_data:
+        mode: rw_mount
+
+  train_evaluate:
+    type: command
+    component: ../components/train_evaluate/component.yml
+    inputs:
+      input_data: ${{parent.jobs.feature_selection.outputs.output_data}}
+    outputs:
+      output_data:
+        mode: rw_mount

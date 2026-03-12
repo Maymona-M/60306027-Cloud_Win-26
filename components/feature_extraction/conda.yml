@@ -1,0 +1,11 @@
+name: feature_extraction_env
+channels:
+  - defaults
+dependencies:
+  - python=3.9
+  - pip
+  - pip:
+    - pandas
+    - numpy
+    - tsfresh
+    - joblib

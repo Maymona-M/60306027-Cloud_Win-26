@@ -1,0 +1,24 @@
+{
+  "best_model": "Gradient Boosting",
+  "cv_rmse": 6.35,
+  "cv_std": 2.73,
+  "n_features_used": 8,
+  "all_models": {
+    "Random Forest": {
+      "RMSE": 6.78,
+      "STD": 2.14
+    },
+    "Gradient Boosting": {
+      "RMSE": 6.35,
+      "STD": 2.73
+    },
+    "XGBoost": {
+      "RMSE": 6.53,
+      "STD": 0.37
+    },
+    "LightGBM": {
+      "RMSE": 19.59,
+      "STD": 3.13
+    }
+  }
+}

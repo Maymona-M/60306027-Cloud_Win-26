@@ -1,0 +1,24 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+name: ingest_turbofan
+version: 1
+display_name: Ingest Turbofan Data
+type: command
+
+inputs:
+  raw_data:
+    type: uri_folder
+
+outputs:
+  output_data:
+    type: uri_folder
+
+code: .
+
+command: >-
+  python ingest.py
+  --raw_data ${{inputs.raw_data}}
+  --output_data ${{outputs.output_data}}
+
+environment:
+  conda_file: conda.yml
+  image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04
