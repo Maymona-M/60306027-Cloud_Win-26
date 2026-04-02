@@ -1,0 +1,5 @@
+name: amazon-env
+version: 1
+type: conda
+conda_file: env/conda.yml
+image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04
