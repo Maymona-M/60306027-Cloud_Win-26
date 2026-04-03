@@ -2,15 +2,21 @@ import json
 import os
 import joblib
 import numpy as np
-import pandas as pd
 
 model = None
 
 def init():
     global model
-    model_path = os.path.join(os.environ.get("AZUREML_MODEL_DIR", "."), "model.pkl")
-    model = joblib.load(model_path)
-    print("Model loaded from", model_path)
+    model_dir = os.environ.get("AZUREML_MODEL_DIR", ".")
+    # Find model.pkl anywhere under model dir
+    for root, dirs, files in os.walk(model_dir):
+        for f in files:
+            if f == "model.pkl":
+                model_path = os.path.join(root, f)
+                model = joblib.load(model_path)
+                print(f"Model loaded from {model_path}")
+                return
+    raise FileNotFoundError(f"model.pkl not found under {model_dir}")
 
 def run(raw_data):
     try:
