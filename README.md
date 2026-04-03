@@ -280,3 +280,8 @@ This assignment demonstrates a complete end-to-end MLOps workflow built on Azure
 **Question:** There is one thing we are doing “not correctly” in this assignment. What is it?
 
 **Answer:**  
+The assignment evaluates the test set during every sweep trial, which is incorrect. The test set should be used only once for final evaluation after selecting the best model using the validation set, otherwise this causes data leakage and overestimates model performance.
+Additionally, some feature transformers (e.g., TF-IDF, SBERT) are being fit on non-training splits, which also leaks information from validation/test sets into the model.
+Both issues violate standard MLOps and machine learning best practices.
+
+---
