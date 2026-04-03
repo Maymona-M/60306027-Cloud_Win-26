@@ -165,6 +165,25 @@ az ml online-endpoint delete --name amazon-review-ep-60306027 --yes
 
 ---
 
+## Project Screenshots
+
+### 1. Metrics
+![Metrics](images/1.%20Metrics.png)
+
+### 2. Pipeline
+![Pipeline](images/2.%20Pipeline.png)
+
+### 3. Pipeline Run
+![Pipeline Run](images/3.%20Pipeline%20Run.png)
+
+### 4. Pipeline Jobs
+![Pipeline Jobs](images/4.%20Pipeline%20Jobs%20.png)
+
+### 5. Deployment Accuracy
+![Deployment Accuracy](images/5.%20Deployment%20Acc.png)
+
+---
+
 ## MLflow Metrics Logged
 For each split (train, val, test):
 - `{split}_accuracy`
