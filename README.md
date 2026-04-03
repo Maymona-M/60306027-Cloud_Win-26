@@ -260,6 +260,7 @@ After evaluating the deployment dataset and collecting metrics, delete the endpo
 
 ```bash
 az ml online-endpoint delete --name amazon-review-ep-60306027 --yes
+```
 
 ---
 
@@ -279,7 +280,3 @@ This assignment demonstrates a complete end-to-end MLOps workflow built on Azure
 **Question:** There is one thing we are doing “not correctly” in this assignment. What is it?
 
 **Answer:**  
-The deployment script hardcodes the endpoint URL and API key in the source code (`invoke_endpoint.py`).  
-In a real-world MLOps workflow, sensitive credentials should never be stored in code.  
-Instead, we would use **Azure Key Vault** or environment variables to securely store API keys and secrets.  
-This improves security and allows safer automation in CI/CD pipelines.
