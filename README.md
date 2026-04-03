@@ -212,9 +212,7 @@ code push → Azure DevOps pipeline → Azure ML training job → MLflow metrics
 ```
 
 **Azure DevOps CI:** triggers on push to `assignment2_model_training`, submits and streams training job automatically.
-
 **Registered Model:** `amazon-review-sentiment-model` version 2
-
 **Endpoint:** `amazon-review-ep-60306027` | Deployment: `blue` | Instance: `Standard_F2s_v2`
 
 ---
@@ -226,6 +224,23 @@ code push → Azure DevOps pipeline → Azure ML training job → MLflow metrics
 - **Auth:** key-based
 
 Endpoint invoked using the deployment dataset (`amazon_review_merged_features_deploy:1`) to simulate production predictions and measure real-world performance.
+
+## Deployment Dataset Evaluation
+
+| Metric | Deployment Dataset |
+|--------|------------------|
+| Accuracy | 0.888 |
+| Samples Tested | 1000 |
+
+---
+
+## Important – Delete Endpoint
+
+Idle endpoints continue consuming compute resources.  
+After evaluating the deployment dataset and collecting metrics, delete the endpoint:
+
+```bash
+az ml online-endpoint delete --name amazon-review-ep-60306027 --yes
 
 ---
 
@@ -239,3 +254,13 @@ This assignment demonstrates a complete end-to-end MLOps workflow built on Azure
 - The final model was registered, deployed as a managed online endpoint, and invoked against the deployment dataset to simulate real production inference
 
 ---
+
+## Bonus Question – 20%
+
+**Question:** There is one thing we are doing “not correctly” in this assignment. What is it?
+
+**Answer:**  
+The deployment script hardcodes the endpoint URL and API key in the source code (`invoke_endpoint.py`).  
+In a real-world MLOps workflow, sensitive credentials should never be stored in code.  
+Instead, we would use **Azure Key Vault** or environment variables to securely store API keys and secrets.  
+This improves security and allows safer automation in CI/CD pipelines.
