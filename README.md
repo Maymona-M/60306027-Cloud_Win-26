@@ -19,13 +19,11 @@ Transition from feature engineering (Lab 4) into a full MLOps training and deplo
 ---
 
 ## Tools & Technologies
-- Git & GitHub
-- Python (pandas, scikit-learn, nltk, sentence-transformers)
-- Azure Databricks
-- Azure Data Lake Storage Gen2
-- Azure Machine Learning (Components, Pipelines, Feature Store)
-- Azure ML CLI
-- Azure DevOps
+- **Git & GitHub** — version control and CI trigger
+- **Python** — pandas, numpy, scikit-learn, joblib, mlflow
+- **Azure Machine Learning** — compute clusters, command jobs, sweep jobs, managed endpoints, MLflow tracking, model registry, data assets
+- **Azure DevOps** — CI pipeline for automated training job submission
+- **Azure ML CLI v2** — job submission and resource management
 
 ---
 
@@ -33,16 +31,16 @@ Transition from feature engineering (Lab 4) into a full MLOps training and deplo
 ```bash
 60306027-Cloud_Win-26/
 ├── src/
-│   ├── train.py              # Training script (features, model, MLflow logging)
-│   ├── score.py              # Scoring script for online endpoint
-│   └── invoke_endpoint.py    # Script to invoke endpoint with deployment dataset
+│   ├── train.py              # Training script: loads features, trains model, logs metrics
+│   ├── score.py              # Scoring script for managed online endpoint
+│   └── invoke_endpoint.py    # Invokes endpoint with deployment dataset
 ├── jobs/
 │   ├── train_job.yml         # Azure ML command job definition
-│   ├── sweep_job.yml         # Azure ML sweep job for hyperparameter tuning
+│   ├── sweep_job.yml         # Hyperparameter sweep job definition
 │   └── deployment.yml        # Managed online deployment configuration
 ├── env/
-│   ├── conda.yml             # Training environment dependencies
-│   └── inference_conda.yml   # Inference environment dependencies
+│   ├── conda.yml             # Training environment (minimal, fast build)
+│   └── inference_conda.yml   # Inference environment for endpoint container
 ├── azure-pipelines.yml       # Azure DevOps CI pipeline
 └── README.md
 ```
@@ -86,7 +84,7 @@ All features come directly from the Lab 4 pipeline outputs — no feature engine
 | Sentiment | `compound`, `sentiment_positive`, `sentiment_negative`, `sentiment_neutral` | VADER scores |
 | Length | `review_length`, `word_count`, `avg_word_length`, `sentence_count` | Review statistics |
 
-**Total feature matrix: ~5,392 columns**
+**Total feature matrix: ~5,392 columns per sample**
 
 ---
 
@@ -94,6 +92,76 @@ All features come directly from the Lab 4 pipeline outputs — no feature engine
 Binary classification:
 - `1` (Positive) → `overall >= 4`
 - `0` (Negative) → `overall < 4`
+
+---
+
+## Pipeline Components (from Lab 4)
+
+| Component | Description |
+|-----------|-------------|
+| `split_dataset` | Splits into train/val/test/deploy using stratified sampling by `review_year` |
+| `normalize_text` | Lowercases, removes URLs, numbers, punctuation, filters short reviews |
+| `length_features` | Extracts `review_length`, `word_count`, `avg_word_length`, `sentence_count` |
+| `sentiment_features` | Extracts VADER sentiment scores (pos, neg, neu, compound) |
+| `tfidf_features` | Fits TF-IDF on train only, transforms all splits (prevents leakage) |
+| `sbert_embeddings` | Encodes reviews with `all-MiniLM-L6-v2` into 384-dim vectors |
+| `merge_features` | Inner joins all feature tables on `(asin, reviewerID)` |
+
+---
+
+## Procedure:
+
+### 1. Clone and switch branch
+```bash
+git clone https://github.com/Maymona-M/60306027-Cloud_Win-26.git
+cd 60306027-Cloud_Win-26
+git checkout assignment2_model_training
+```
+
+### 2. Configure Azure ML CLI
+```bash
+az extension add -n ml -y
+az configure --defaults group=rg-60306027 workspace=Amazon-Electronics-Lab-60306027
+```
+
+### 3. Register data assets (if not already registered)
+```bash
+az ml data create --name amazon_review_merged_features_train --version 1 \
+  --type uri_folder --path <blob-path-to-train-out>
+# repeat for val, test, deploy
+```
+
+### 4. Submit training job manually
+```bash
+az ml job create --file jobs/train_job.yml
+```
+
+### 5. Submit sweep job
+```bash
+az ml job create --file jobs/sweep_job.yml
+```
+
+### 6. Register the model
+```bash
+az ml model create --name amazon-review-sentiment-model \
+  --path azureml://jobs/<JOB_NAME>/outputs/model_output --type custom_model
+```
+
+### 7. Create endpoint and deploy
+```bash
+az ml online-endpoint create --name amazon-review-ep-60306027 --auth-mode key
+az ml online-deployment create --file jobs/deployment.yml --all-traffic
+```
+
+### 8. Invoke endpoint with deployment dataset
+```bash
+python src/invoke_endpoint.py --deploy_data <path-to-deploy-parquet>
+```
+
+### 9. Delete endpoint when done
+```bash
+az ml online-endpoint delete --name amazon-review-ep-60306027 --yes
+```
 
 ---
 
@@ -109,7 +177,7 @@ For each split (train, val, test):
 ---
 
 ## Manual Training Job Results
-**Job:** `plum_station_896mwkcsbm`
+**Job:** `plum_station_896mwkcsbm` | **Params:** C=1.0, max_iter=1000
 
 | Metric | Train | Val | Test |
 |--------|-------|-----|------|
@@ -118,21 +186,23 @@ For each split (train, val, test):
 | F1 | 0.9421 | 0.9421 | 0.9421 |
 | Precision | 0.9094 | 0.9094 | 0.9094 |
 | Recall | 0.9772 | 0.9772 | 0.9772 |
-| Runtime | - | - | 69.05s |
+| Runtime | — | — | 69.05s |
 
 ---
 
 ## Hyperparameter Tuning (Sweep Job)
 **Job:** `yellow_energy_tw6x518766`
 
-Search space:
-- `C`: uniform [0.01, 10.0]
-- `max_iter`: choice [500, 1000, 2000]
+| Parameter | Search Space |
+|-----------|-------------|
+| `C` | uniform [0.01, 10.0] |
+| `max_iter` | choice [500, 1000, 2000] |
 
-Sampling: random | Trials: 6 | Concurrent: 2
-Objective: maximize `val_accuracy`
+- Sampling: random
+- Max trials: 6 | Concurrent: 2
+- Objective: maximize `val_accuracy`
 
-Best configuration selected from sweep child runs (see Azure ML Studio → Jobs → Sweep experiment).
+Best configuration selected from sweep (see Azure ML Studio → Jobs → `amazon_review_training_experiment`).
 
 ---
 
@@ -141,15 +211,11 @@ Best configuration selected from sweep child runs (see Azure ML Studio → Jobs 
 code push → Azure DevOps pipeline → Azure ML training job → MLflow metrics → versioned model → deployed endpoint
 ```
 
-### Azure DevOps CI Pipeline
-- Trigger: push to `assignment2_model_training`
-- Automatically submits Azure ML training job and streams logs
-- Service connection: `SC-UDST-CCIT-DSAI3202-2`
+**Azure DevOps CI:** triggers on push to `assignment2_model_training`, submits and streams training job automatically.
 
-### Registered Model
-- Name: `amazon-review-sentiment-model`
-- Version: 2
-- Linked to job: `plum_station_896mwkcsbm`
+**Registered Model:** `amazon-review-sentiment-model` version 2
+
+**Endpoint:** `amazon-review-ep-60306027` | Deployment: `blue` | Instance: `Standard_F2s_v2`
 
 ---
 
@@ -163,28 +229,13 @@ Endpoint invoked using the deployment dataset (`amazon_review_merged_features_de
 
 ---
 
-
-
----
-### Step 1: GitHub Branch
-```bash
-git checkout assignment2_model_training
-git pull origin assignment2_model_training
-```
-
-### Step 2: Configure Azure ML CLI
-```bash
-az extension add -n ml -y
-az extension update -n ml
-az login
-az configure --defaults group="rg-60306027" workspace="Amazon-Electronics-Lab-60306027"
-az ml workspace show
-```
-
----
-
 ## Conclusion
-This lab demonstrates...
+This assignment demonstrates a complete end-to-end MLOps workflow built on Azure:
+- Engineered features from Lab 4 were consumed directly as versioned data assets
+- A Logistic Regression model achieved **90.3% accuracy and 94.5% AUC** on the test set
+- MLflow tracked all metrics and parameters across every run
+- Azure DevOps automated the training pipeline end-to-end with a single push
+- Hyperparameter tuning via sweep jobs identified the optimal model configuration
+- The final model was registered, deployed as a managed online endpoint, and invoked against the deployment dataset to simulate real production inference
 
 ---
-
